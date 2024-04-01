@@ -40,10 +40,10 @@ fn extract_links_from_results(html: String) -> Vec<Embryo> {
     let mut embryo_list = Vec::new();
     let fragment = Html::parse_document(&html);
 
-    let selector = Selector::parse(".compTitle.options-toggle").unwrap();
+    let selector = Selector::parse(".relsrch").unwrap();
 
     for element in fragment.select(&selector) {
-        let anchor_selector = Selector::parse("a").unwrap();
+        let anchor_selector = Selector::parse(".compTitle a").unwrap();
 
         let link = element.select(&anchor_selector)
             .next()
@@ -56,7 +56,8 @@ fn extract_links_from_results(html: String) -> Vec<Embryo> {
             continue;
         }
 
-        let resume = element.select(&anchor_selector)
+        let span_selector = Selector::parse(".fc-falcon").unwrap();
+        let resume = element.select(&span_selector)
             .next()
             .map(|elem| elem.text().collect::<Vec<_>>().join(""))
             .unwrap_or_default()
