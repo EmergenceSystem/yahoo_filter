@@ -39,31 +39,43 @@ async fn generate_embryo_list(json_string: String) -> Vec<Embryo> {
 fn extract_links_from_results(html: String) -> Vec<Embryo> {
     let mut embryo_list = Vec::new();
     let fragment = Html::parse_document(&html);
-    let selector = Selector::parse("a").unwrap();
 
-    for node in fragment.select(&selector) {
-        if let Some(link) = node.value().attr("href") {
-            if EXCLUDED_CONTENT.iter().any(|excluded| link.contains(excluded))
-                || !link.starts_with("http")
-            {
-                continue;
-            }
+    let selector = Selector::parse(".compTitle.options-toggle").unwrap();
 
-            let embryo = Embryo {
-                properties: vec![
-                    EmPair {
-                        name: "url".to_string(),
-                        value: link.to_string(),
-                    },
-                    EmPair {
-                        name: "resume".to_string(),
-                        value: format!("Link from search result"),
-                    },
-                ],
-            };
+    for element in fragment.select(&selector) {
+        let anchor_selector = Selector::parse("a").unwrap();
 
-            embryo_list.push(embryo);
+        let link = element.select(&anchor_selector)
+            .next()
+            .and_then(|elem| elem.value().attr("href"))
+            .unwrap_or_default();
+
+
+        if EXCLUDED_CONTENT.iter().any(|excluded| link.contains(excluded)) || !link.starts_with("http")
+        {
+            continue;
         }
+
+        let resume = element.select(&anchor_selector)
+            .next()
+            .map(|elem| elem.text().collect::<Vec<_>>().join(""))
+            .unwrap_or_default()
+            .trim().to_string();
+
+        let embryo = Embryo {
+            properties: vec![
+                EmPair {
+                    name: "url".to_string(),
+                    value: link.to_string(),
+                },
+                EmPair {
+                    name: "resume".to_string(),
+                    value: resume.to_string(),
+                },
+            ],
+        };
+
+        embryo_list.push(embryo);
     }
 
     embryo_list
