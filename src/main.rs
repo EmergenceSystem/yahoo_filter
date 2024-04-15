@@ -4,7 +4,8 @@ use scraper::{Html, Selector};
 use serde_json::from_str;
 use std::string::String;
 use url::form_urlencoded;
-use embryo::{Embryo, EmPair, EmbryoList};
+use embryo::{Embryo, EmbryoList};
+use std::collections::HashMap;
 
 static SEARCH_URL: &str = "https://fr.search.yahoo.com/search?p=";
 static EXCLUDED_CONTENT: [&str; 1] = ["yahoo"];
@@ -17,8 +18,9 @@ async fn query_handler(body: String) -> impl Responder {
 }
 
 async fn generate_embryo_list(json_string: String) -> Vec<Embryo> {
-    let search: EmPair = from_str(&json_string).expect("Erreur lors de la désérialisation JSON");
-    let encoded_search: String = form_urlencoded::byte_serialize(search.value.as_bytes()).collect();
+    let em_search: HashMap<String,String> = from_str(&json_string).expect("Erreur lors de la désérialisation JSON");
+    let (_key, value) = em_search.iter().next().expect("Empty map");
+    let encoded_search: String = form_urlencoded::byte_serialize(value.as_bytes()).collect();
     let search_url = format!("{}{}", SEARCH_URL, encoded_search);
     println!("{}", search_url);
     let response = Client::new().get(&search_url).send().await;
@@ -63,17 +65,11 @@ fn extract_links_from_results(html: String) -> Vec<Embryo> {
             .unwrap_or_default()
             .trim().to_string();
 
+        let mut embryo_properties = HashMap::new();
+        embryo_properties.insert("url".to_string(),link.to_string());
+        embryo_properties.insert("resume".to_string(),resume.to_string());
         let embryo = Embryo {
-            properties: vec![
-                EmPair {
-                    name: "url".to_string(),
-                    value: link.to_string(),
-                },
-                EmPair {
-                    name: "resume".to_string(),
-                    value: resume.to_string(),
-                },
-            ],
+            properties: embryo_properties,
         };
 
         embryo_list.push(embryo);
